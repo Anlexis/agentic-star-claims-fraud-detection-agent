@@ -1,0 +1,51 @@
+# Runtime parameters — loaded at startup and passed to the graph as
+# Graph(config=...). Separate from config/agent.yaml, which is the static
+# manifest the registry reads to find this agent at all.
+
+max_retry: 3
+timeout_s: 30
+
+# Fraud detection rule-set. Operator setting: these numbers decide whether a
+# claim is escalated to a special investigation unit, so they are never taken
+# from the submitted claim. Every value below is validated when the graph is
+# constructed — non-finite, out-of-range, or out-of-order thresholds fail at
+# startup rather than at the moment a claim needed escalating.
+#
+# Only the keys named here are tunable; an unrecognised key is refused rather
+# than ignored, so a typo cannot quietly disable a detector. Omit any key to
+# keep its built-in default (shown as the value).
+fraud_patterns:
+  # Score at or above which each alert tier is raised. Must be non-decreasing.
+  #
+  # The highest score the detectors below can produce is 77.75: an inflated
+  # estimate at very-high severity (35.0) plus a resubmission on a policy with
+  # prior claims (30.0) plus a rapid report (15.0 x 0.85 for medium severity).
+  # A critical boundary above that names a tier no claim can reach — which
+  # reads as "no critical cases have occurred" rather than as a setting that
+  # can never fire. Raise the boundary only alongside the weights below.
+  thresholds:
+    warning: 30.0
+    high: 60.0
+    critical: 75.0
+
+  # Claim amount above which the estimate is treated as inflated, and the
+  # points each band contributes to the risk score.
+  inflated_estimate:
+    enabled: true
+    high_amount_threshold: 50000.0
+    very_high_amount_threshold: 200000.0
+    moderate_score_contribution: 20.0
+    high_score_contribution: 35.0
+
+  # Submission-timing signals: a claim filed within the rapid-report window
+  # after the incident, and a first claim on a policy.
+  suspicious_timing:
+    enabled: true
+    rapid_submission_hours: 24.0
+    rapid_submission_score: 15.0
+    first_claim_score: 5.0
+
+  # Resubmission signals.
+  duplicate_detection:
+    enabled: true
+    score_contribution: 30.0
